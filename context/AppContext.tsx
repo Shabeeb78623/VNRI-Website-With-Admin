@@ -1,37 +1,123 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { AppContextType, AppData } from '../types';
+import type { AppContextType, AppData, CommitteeMember, GalleryImage } from '../types';
 import { INITIAL_MAIN_COMMITTEE, INITIAL_BALAVEDHI_COMMITTEE, INITIAL_GALLERY_IMAGES } from '../constants';
+import { db } from '../firebaseConfig';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  writeBatch,
+  query,
+  orderBy
+} from 'firebase/firestore';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // --- Data State (The "Backend" Database) ---
-  const [data, setData] = useState<AppData>({
-    mainCommittee: INITIAL_MAIN_COMMITTEE,
-    balavedhiCommittee: INITIAL_BALAVEDHI_COMMITTEE,
-    galleryImages: INITIAL_GALLERY_IMAGES,
-  });
+  // Independent states for each collection
+  const [mainCommittee, setMainCommittee] = useState<CommitteeMember[]>(INITIAL_MAIN_COMMITTEE);
+  const [balavedhiCommittee, setBalavedhiCommittee] = useState<CommitteeMember[]>(INITIAL_BALAVEDHI_COMMITTEE);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>(INITIAL_GALLERY_IMAGES);
 
-  // Load data from LocalStorage on mount (Persistence)
+  // --- Firestore Sync Logic ---
   useEffect(() => {
-    const savedData = localStorage.getItem('vnri_app_data');
-    if (savedData) {
-      try {
-        setData(JSON.parse(savedData));
-      } catch (e) {
-        console.error("Failed to load saved data", e);
+    // Subscribe to Main Committee
+    const unsubMain = onSnapshot(collection(db, 'main_committee'), (snapshot) => {
+      if (snapshot.empty) {
+        // Seed if empty
+        seedCollection('main_committee', INITIAL_MAIN_COMMITTEE);
+      } else {
+        const members = snapshot.docs.map(d => d.data() as CommitteeMember);
+        // Sort by ID or another field if needed to keep order stable
+        setMainCommittee(members.sort((a,b) => a.id.localeCompare(b.id)));
       }
-    }
+    }, (err) => console.error("DB Error Main:", err));
+
+    // Subscribe to Balavedhi Committee
+    const unsubBalavedhi = onSnapshot(collection(db, 'balavedhi_committee'), (snapshot) => {
+      if (snapshot.empty) {
+        seedCollection('balavedhi_committee', INITIAL_BALAVEDHI_COMMITTEE);
+      } else {
+        const members = snapshot.docs.map(d => d.data() as CommitteeMember);
+        setBalavedhiCommittee(members.sort((a,b) => a.id.localeCompare(b.id)));
+      }
+    }, (err) => console.error("DB Error Balavedhi:", err));
+
+    // Subscribe to Gallery
+    const unsubGallery = onSnapshot(collection(db, 'gallery'), (snapshot) => {
+      if (snapshot.empty) {
+        seedCollection('gallery', INITIAL_GALLERY_IMAGES);
+      } else {
+        const images = snapshot.docs.map(d => d.data() as GalleryImage);
+        setGalleryImages(images);
+      }
+    }, (err) => console.error("DB Error Gallery:", err));
+
+    return () => {
+      unsubMain();
+      unsubBalavedhi();
+      unsubGallery();
+    };
   }, []);
 
-  const updateData = (newData: AppData) => {
-    setData(newData);
-    localStorage.setItem('vnri_app_data', JSON.stringify(newData));
+  // Helper to seed initial data
+  const seedCollection = async (colName: string, data: any[]) => {
+    console.log(`Seeding ${colName}...`);
+    try {
+      const batch = writeBatch(db);
+      data.forEach(item => {
+        const ref = doc(db, colName, item.id);
+        batch.set(ref, item);
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error("Seeding failed (likely permission issue or offline):", e);
+    }
   };
 
-  // --- Authentication State ---
+  // --- CRUD Operations ---
+
+  const saveMember = async (type: 'main' | 'balavedhi', member: CommitteeMember) => {
+    const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
+    try {
+      await setDoc(doc(db, colName, member.id), member);
+    } catch (e) {
+      console.error("Error saving member:", e);
+      alert("Error saving. Check internet connection.");
+    }
+  };
+
+  const deleteMember = async (type: 'main' | 'balavedhi', id: string) => {
+    const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
+    try {
+      await deleteDoc(doc(db, colName, id));
+    } catch (e) {
+      console.error("Error deleting member:", e);
+    }
+  };
+
+  const saveGalleryImage = async (image: GalleryImage) => {
+    try {
+      await setDoc(doc(db, 'gallery', image.id), image);
+    } catch (e) {
+      console.error("Error saving image:", e);
+      alert("Error saving image.");
+    }
+  };
+
+  const deleteGalleryImage = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'gallery', id));
+    } catch (e) {
+      console.error("Error deleting image:", e);
+    }
+  };
+
+  // --- Auth & View State ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentView, setCurrentView] = useState<'home' | 'admin'>('home');
 
   const login = (u: string, p: string) => {
     if (u === 'Shabeeb' && p === 'ShabeeB@2025') {
@@ -43,26 +129,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setIsAuthenticated(false);
-    navigateTo('home');
+    setCurrentView('home');
   };
-
-  // --- View/Navigation State ---
-  const [currentView, setCurrentView] = useState<'home' | 'admin'>('home');
 
   const navigateTo = (view: 'home' | 'admin') => {
     setCurrentView(view);
     window.scrollTo(0, 0);
   };
 
+  // Derived full data object for compatibility
+  const data: AppData = {
+    mainCommittee,
+    balavedhiCommittee,
+    galleryImages
+  };
+
   return (
     <AppContext.Provider value={{ 
       data, 
-      updateData, 
       isAuthenticated, 
       login, 
       logout, 
       currentView, 
-      navigateTo 
+      navigateTo,
+      saveMember,
+      deleteMember,
+      saveGalleryImage,
+      deleteGalleryImage
     }}>
       {children}
     </AppContext.Provider>
