@@ -19,16 +19,41 @@ const Contact: React.FC = () => {
     setStatus('submitting');
     
     try {
+      // 1. Send Email via FormSubmit (Free Service)
+      // We use fetch to do this silently without redirecting the page
+      const emailResponse = await fetch("https://formsubmit.co/ajax/shabeebkk@gmail.com", {
+        method: "POST",
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          _subject: `New Message from VNRI Website: ${formData.name}`,
+          name: formData.name,
+          email: formData.email,
+          message: formData.message
+        })
+      });
+
+      // 2. Save to Firestore Database (Backup)
       await saveMessage({
         ...formData,
         timestamp: Date.now()
       });
-      setStatus('success');
-      setFormData({ name: '', email: '', message: '' });
-      // Reset success message after 5 seconds
-      setTimeout(() => setStatus('idle'), 5000);
+
+      if (emailResponse.ok) {
+        setStatus('success');
+        setFormData({ name: '', email: '', message: '' });
+        // Reset success message after 5 seconds
+        setTimeout(() => setStatus('idle'), 5000);
+      } else {
+        throw new Error('Email service failed');
+      }
+
     } catch (error) {
       console.error("Contact form error:", error);
+      // Even if email fails, if Firestore worked, we can consider it mostly a success, 
+      // but for now let's show error so user tries again.
       setStatus('error');
     }
   };
@@ -51,7 +76,7 @@ const Contact: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
                 <strong className="font-bold mr-1">Thank you!</strong>
-                <span>Your message has been sent.</span>
+                <span>Your message has been sent to our team.</span>
               </div>
             </div>
           )}
@@ -69,6 +94,10 @@ const Contact: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Hidden Inputs for FormSubmit Configuration */}
+            <input type="hidden" name="_template" value="table" />
+            <input type="hidden" name="_captcha" value="false" />
+
             <div className="space-y-1">
               <label htmlFor="name" className="text-sm font-semibold text-gray-700">Full Name</label>
               <input 

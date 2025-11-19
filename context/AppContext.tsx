@@ -120,10 +120,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteMember = async (type: 'main' | 'balavedhi', id: string) => {
-    if (!db) return;
+    if (!db) {
+      console.error("Database not initialized");
+      return;
+    }
     const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
+    console.log(`Attempting to delete ${id} from ${colName}`);
     try {
       await deleteDoc(doc(db, colName, id));
+      console.log("Deletion successful");
     } catch (e: any) {
       console.error("Error deleting member:", e);
       alert(`Error deleting: ${e.message}`);
@@ -152,14 +157,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const saveMessage = async (msg: ContactMessage) => {
     if (!db) {
-       alert("Database not connected.");
+       // Even if DB is down, we don't block the email submission, 
+       // but the component will handle the email part separately.
+       console.warn("Database not connected, skipping Firestore save.");
        return;
     }
     try {
       await addDoc(collection(db, 'messages'), msg);
     } catch (e: any) {
-      console.error("Error sending message:", e);
-      alert(`Error sending message: ${e.message}`);
+      console.error("Error sending message to Firestore:", e);
+      // We re-throw so the UI knows something went wrong
       throw e;
     }
   };

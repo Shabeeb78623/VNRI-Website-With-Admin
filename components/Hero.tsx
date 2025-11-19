@@ -7,12 +7,14 @@ const Hero: React.FC = () => {
       <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48 text-center relative z-10">
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight animate-fade-in-down">
-          Welcome to
+        {/* SEO Optimization: Using a single H1 tag makes the keyword strength much higher for Google */}
+        <h1 className="font-bold tracking-tight animate-fade-in-down">
+          <span className="block text-4xl md:text-6xl mb-4">Welcome to</span>
+          <span className="block text-5xl md:text-7xl text-yellow-400 font-extrabold drop-shadow-lg">
+            Vadakara NRI Forum Abu Dhabi
+          </span>
         </h1>
-        <h2 className="text-yellow-400 text-5xl md:text-7xl font-extrabold mt-4 drop-shadow-lg">
-          Vadakara NRI Forum Abu Dhabi
-        </h2>
+        
         <p className="mt-8 max-w-3xl mx-auto text-lg md:text-xl text-blue-100 leading-relaxed">
           Celebrating 20 Years of Togetherness. Connecting our community, fostering our culture, and supporting each other in the UAE.
         </p>
