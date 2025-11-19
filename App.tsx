@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Header from './components/Header';
@@ -24,8 +23,20 @@ const MainContent: React.FC = () => (
   </div>
 );
 
+const LoadingScreen: React.FC = () => (
+  <div className="min-h-screen bg-blue-900 flex flex-col items-center justify-center">
+    <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+    <h2 className="text-white text-xl font-bold tracking-wide">VNRI FORUM</h2>
+    <p className="text-blue-200 text-sm mt-2">Loading community data...</p>
+  </div>
+);
+
 const AppRouter: React.FC = () => {
-  const { currentView } = useApp();
+  const { currentView, isLoading } = useApp();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <>

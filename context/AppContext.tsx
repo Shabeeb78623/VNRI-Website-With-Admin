@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AppContextType, AppData, CommitteeMember, GalleryImage } from '../types';
 import { INITIAL_MAIN_COMMITTEE, INITIAL_BALAVEDHI_COMMITTEE, INITIAL_GALLERY_IMAGES } from '../constants';
@@ -18,43 +17,69 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Independent states for each collection
-  const [mainCommittee, setMainCommittee] = useState<CommitteeMember[]>(INITIAL_MAIN_COMMITTEE);
-  const [balavedhiCommittee, setBalavedhiCommittee] = useState<CommitteeMember[]>(INITIAL_BALAVEDHI_COMMITTEE);
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>(INITIAL_GALLERY_IMAGES);
+  const [mainCommittee, setMainCommittee] = useState<CommitteeMember[]>([]);
+  const [balavedhiCommittee, setBalavedhiCommittee] = useState<CommitteeMember[]>([]);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // --- Firestore Sync Logic ---
   useEffect(() => {
-    if (!db) return; // DB init failed
+    if (!db) {
+      // Fallback if DB not connected
+      setMainCommittee(INITIAL_MAIN_COMMITTEE);
+      setBalavedhiCommittee(INITIAL_BALAVEDHI_COMMITTEE);
+      setGalleryImages(INITIAL_GALLERY_IMAGES);
+      setIsLoading(false);
+      return; 
+    }
+
+    let loadedCount = 0;
+    const checkLoading = () => {
+      loadedCount++;
+      if (loadedCount >= 3) setIsLoading(false);
+    };
 
     // Subscribe to Main Committee
     const unsubMain = onSnapshot(collection(db, 'main_committee'), (snapshot) => {
-      if (snapshot.empty) {
+      if (snapshot.empty && loadedCount === 0) {
         seedCollection('main_committee', INITIAL_MAIN_COMMITTEE);
       } else {
         const members = snapshot.docs.map(d => d.data() as CommitteeMember);
         setMainCommittee(members.sort((a,b) => a.id.localeCompare(b.id)));
       }
-    }, (err) => console.error("DB Error Main:", err));
+      checkLoading();
+    }, (err) => {
+      console.error("DB Error Main:", err);
+      checkLoading();
+    });
 
     // Subscribe to Balavedhi Committee
     const unsubBalavedhi = onSnapshot(collection(db, 'balavedhi_committee'), (snapshot) => {
-      if (snapshot.empty) {
+      if (snapshot.empty && loadedCount === 0) {
         seedCollection('balavedhi_committee', INITIAL_BALAVEDHI_COMMITTEE);
       } else {
         const members = snapshot.docs.map(d => d.data() as CommitteeMember);
         setBalavedhiCommittee(members.sort((a,b) => a.id.localeCompare(b.id)));
       }
-    }, (err) => console.error("DB Error Balavedhi:", err));
+      checkLoading();
+    }, (err) => {
+      console.error("DB Error Balavedhi:", err);
+      checkLoading();
+    });
 
     // Subscribe to Gallery
     const unsubGallery = onSnapshot(collection(db, 'gallery'), (snapshot) => {
-      if (snapshot.empty) {
+      if (snapshot.empty && loadedCount === 0) {
         seedCollection('gallery', INITIAL_GALLERY_IMAGES);
       } else {
         const images = snapshot.docs.map(d => d.data() as GalleryImage);
         setGalleryImages(images);
       }
-    }, (err) => console.error("DB Error Gallery:", err));
+      checkLoading();
+    }, (err) => {
+      console.error("DB Error Gallery:", err);
+      checkLoading();
+    });
 
     return () => {
       unsubMain();
@@ -159,7 +184,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider value={{ 
       data, 
-      isAuthenticated, 
+      isAuthenticated,
+      isLoading, 
       login, 
       logout, 
       currentView, 

@@ -26,6 +26,7 @@ export interface AppData {
 export interface AppContextType {
   data: AppData;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (u: string, p: string) => boolean;
   logout: () => void;
   currentView: 'home' | 'admin';
