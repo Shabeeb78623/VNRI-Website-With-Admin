@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AppContextType, AppData, CommitteeMember, GalleryImage } from '../types';
 import { INITIAL_MAIN_COMMITTEE, INITIAL_BALAVEDHI_COMMITTEE, INITIAL_GALLERY_IMAGES } from '../constants';
@@ -23,14 +24,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- Firestore Sync Logic ---
   useEffect(() => {
+    if (!db) return; // DB init failed
+
     // Subscribe to Main Committee
     const unsubMain = onSnapshot(collection(db, 'main_committee'), (snapshot) => {
       if (snapshot.empty) {
-        // Seed if empty
         seedCollection('main_committee', INITIAL_MAIN_COMMITTEE);
       } else {
         const members = snapshot.docs.map(d => d.data() as CommitteeMember);
-        // Sort by ID or another field if needed to keep order stable
         setMainCommittee(members.sort((a,b) => a.id.localeCompare(b.id)));
       }
     }, (err) => console.error("DB Error Main:", err));
@@ -64,6 +65,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Helper to seed initial data
   const seedCollection = async (colName: string, data: any[]) => {
+    if (!db) return;
     console.log(`Seeding ${colName}...`);
     try {
       const batch = writeBatch(db);
@@ -72,46 +74,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         batch.set(ref, item);
       });
       await batch.commit();
-    } catch (e) {
-      console.error("Seeding failed (likely permission issue or offline):", e);
+    } catch (e: any) {
+      console.error("Seeding failed:", e);
+      // Don't alert on seeding failure, it might just be permission denied in read-only mode
     }
   };
 
   // --- CRUD Operations ---
 
   const saveMember = async (type: 'main' | 'balavedhi', member: CommitteeMember) => {
+    if (!db) {
+      alert("Database not connected. Check firebaseConfig.ts");
+      return;
+    }
     const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
     try {
       await setDoc(doc(db, colName, member.id), member);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error saving member:", e);
-      alert("Error saving. Check internet connection.");
+      alert(`Error saving member: ${e.message}`);
     }
   };
 
   const deleteMember = async (type: 'main' | 'balavedhi', id: string) => {
+    if (!db) return;
     const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
     try {
       await deleteDoc(doc(db, colName, id));
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error deleting member:", e);
+      alert(`Error deleting: ${e.message}`);
     }
   };
 
   const saveGalleryImage = async (image: GalleryImage) => {
+    if (!db) return;
     try {
       await setDoc(doc(db, 'gallery', image.id), image);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error saving image:", e);
-      alert("Error saving image.");
+      alert(`Error saving image: ${e.message}`);
     }
   };
 
   const deleteGalleryImage = async (id: string) => {
+    if (!db) return;
     try {
       await deleteDoc(doc(db, 'gallery', id));
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error deleting image:", e);
+      alert(`Error deleting: ${e.message}`);
     }
   };
 
