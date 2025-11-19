@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://vnri.netlify.app/sitemap.xml
