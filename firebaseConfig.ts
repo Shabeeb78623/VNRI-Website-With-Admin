@@ -11,11 +11,11 @@ import { getFirestore } from "firebase/firestore";
 
 export const firebaseConfig =
  {
-  apiKey: "AIzaSyDc1c8_AyOn3Rfp_-YlZYwLAf716xHT7qk",            // Starts with AIza...
-  authDomain: "vnri-67.firebaseapp.com",    // Ends with .firebaseapp.com
-  projectId: "vnri-67",      // Your project name, e.g. vnri-forum
-  appId: "1:74609157126:web:5ce22339b5eac19d74cf87",              // Starts with 1:...
-  messagingSenderId: "G-K3M2561Q8X" // Numbers only
+  apiKey: "AIzaSyDc1c8_AyOn3Rfp_-YlZYwLAf716xHT7qk",            
+  authDomain: "vnri-67.firebaseapp.com",    
+  projectId: "vnri-67",      
+  appId: "1:74609157126:web:5ce22339b5eac19d74cf87",              
+  messagingSenderId: "74609157126" // Fixed: This must be the number from the appId
 };
 
 // Initialize Firebase
