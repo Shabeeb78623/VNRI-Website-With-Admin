@@ -16,8 +16,10 @@ const Hero: React.FC = () => {
         </p>
         <div className="mt-10">
           <a
-            href="#contact"
-            className="bg-yellow-500 text-blue-900 font-bold px-8 py-4 rounded-lg text-lg hover:bg-yellow-400 transition-all duration-300 transform hover:scale-105 shadow-lg"
+            href="https://shabeeb.netlify.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-yellow-500 text-blue-900 font-bold px-8 py-4 rounded-lg text-lg hover:bg-yellow-400 transition-all duration-300 transform hover:scale-105 shadow-lg inline-block"
           >
             Join Our Community
           </a>

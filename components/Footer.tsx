@@ -12,15 +12,38 @@ const Footer: React.FC = () => {
 
   return (
     <footer className="bg-blue-900 text-blue-200">
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 text-center relative">
-        <p>&copy; {new Date().getFullYear()} Vadakara NRI Forum Abu Dhabi. All Rights Reserved.</p>
-        <div className="absolute bottom-4 right-4">
-           <button 
-            onClick={handleSecretClick}
-            className="bg-yellow-500 text-blue-900 text-xs font-semibold px-3 py-1 rounded-full hover:bg-yellow-400 transition-all duration-300 shadow cursor-pointer"
-           >
-            Made by Shabeeb K.K
-           </button>
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          
+          {/* Left Side: Logo and Copyright */}
+          <div className="flex items-center gap-4">
+            {/* Logo in footer */}
+            <img src="/logo.png" alt="VNRI Logo" className="h-12 w-auto" />
+            <div className="text-center md:text-left">
+              <p className="font-semibold text-white">Vadakara NRI Forum Abu Dhabi</p>
+              <p className="text-sm opacity-80">&copy; {new Date().getFullYear()} All Rights Reserved.</p>
+            </div>
+          </div>
+
+          {/* Right Side: Credits & Secret Admin Button */}
+          <div className="flex flex-col items-center md:items-end space-y-1">
+             <div className="flex flex-col items-center md:items-end text-sm">
+               <span className="text-blue-300">Website developed by</span>
+               <button 
+                onClick={handleSecretClick}
+                className="font-bold text-yellow-400 hover:text-yellow-300 transition-colors"
+               >
+                Shabeeb K.K
+               </button>
+               <a 
+                 href="mailto:shabeebkk@gmail.com" 
+                 className="text-xs text-blue-400 hover:text-white transition-colors mt-1"
+               >
+                 Email: shabeebkk@gmail.com
+               </a>
+             </div>
+          </div>
+          
         </div>
       </div>
     </footer>

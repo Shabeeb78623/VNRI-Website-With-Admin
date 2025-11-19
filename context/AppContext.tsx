@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { AppContextType, AppData, CommitteeMember, GalleryImage } from '../types';
+import type { AppContextType, AppData, CommitteeMember, GalleryImage, ContactMessage } from '../types';
 import { INITIAL_MAIN_COMMITTEE, INITIAL_BALAVEDHI_COMMITTEE, INITIAL_GALLERY_IMAGES } from '../constants';
 import { db } from '../firebaseConfig';
 import { 
@@ -8,9 +8,8 @@ import {
   doc, 
   setDoc, 
   deleteDoc, 
-  writeBatch,
-  query,
-  orderBy
+  addDoc,
+  writeBatch
 } from 'firebase/firestore';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -101,7 +100,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await batch.commit();
     } catch (e: any) {
       console.error("Seeding failed:", e);
-      // Don't alert on seeding failure, it might just be permission denied in read-only mode
     }
   };
 
@@ -152,6 +150,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const saveMessage = async (msg: ContactMessage) => {
+    if (!db) {
+       alert("Database not connected.");
+       return;
+    }
+    try {
+      await addDoc(collection(db, 'messages'), msg);
+    } catch (e: any) {
+      console.error("Error sending message:", e);
+      alert(`Error sending message: ${e.message}`);
+      throw e;
+    }
+  };
+
   // --- Auth & View State ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<'home' | 'admin'>('home');
@@ -193,7 +205,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       saveMember,
       deleteMember,
       saveGalleryImage,
-      deleteGalleryImage
+      deleteGalleryImage,
+      saveMessage
     }}>
       {children}
     </AppContext.Provider>

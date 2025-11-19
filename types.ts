@@ -1,3 +1,4 @@
+
 export interface CommitteeMember {
   id: string;
   name: string;
@@ -15,6 +16,13 @@ export interface GalleryImage {
 export interface NavLink {
   name: string;
   href: string;
+}
+
+export interface ContactMessage {
+  name: string;
+  email: string;
+  message: string;
+  timestamp: number;
 }
 
 export interface AppData {
@@ -37,4 +45,5 @@ export interface AppContextType {
   deleteMember: (type: 'main' | 'balavedhi', id: string) => Promise<void>;
   saveGalleryImage: (image: GalleryImage) => Promise<void>;
   deleteGalleryImage: (id: string) => Promise<void>;
+  saveMessage: (msg: ContactMessage) => Promise<void>;
 }
