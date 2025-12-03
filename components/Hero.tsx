@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 const Hero: React.FC = () => {
@@ -20,7 +21,7 @@ const Hero: React.FC = () => {
         </p>
         <div className="mt-12">
           <a
-            href="https://shabeeb.netlify.app"
+            href="https://vnri-portal.pages.dev"
             target="_blank"
             rel="noopener noreferrer"
             className="bg-yellow-500 text-blue-900 font-extrabold px-10 py-4 rounded-full text-lg hover:bg-yellow-400 transition-all duration-300 transform hover:scale-105 hover:shadow-xl inline-block border-2 border-yellow-600"
