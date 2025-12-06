@@ -28,20 +28,24 @@ const Header: React.FC = () => {
     <header className="bg-blue-900 shadow-lg sticky top-0 z-50 transition-all duration-300 border-b border-blue-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-24">
-          <div className="flex-shrink-0 flex items-center py-2">
-            <a href="#home" className="flex flex-col sm:flex-row sm:items-baseline gap-1 hover:opacity-90 transition-opacity group">
-              {data.siteSettings?.logo ? (
+          <div className="flex-shrink-0 flex items-center py-2 overflow-hidden">
+            <a href="#home" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity group text-decoration-none">
+              {data.siteSettings?.logo && (
                 <img 
                   src={data.siteSettings.logo} 
                   alt={data.siteSettings.title} 
-                  className="h-16 w-auto object-contain"
+                  className="h-10 sm:h-14 w-auto object-contain flex-shrink-0"
                 />
-              ) : (
-                <>
-                  <span className="text-2xl md:text-3xl font-bold text-white tracking-tight group-hover:text-gray-100">Vadakara</span> 
-                  <span className="text-2xl md:text-3xl font-extrabold text-yellow-400 tracking-wider uppercase drop-shadow-sm">NRI Forum</span>
-                </>
               )}
+              <div className="flex flex-col items-start">
+                  <div style={{ fontFamily: 'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif' }} className="flex flex-col sm:flex-row items-start sm:items-center gap-0 sm:gap-1.5 leading-none">
+                      <span className="text-xl sm:text-2xl md:text-4xl text-white tracking-wide">VATAKARA</span> 
+                      <span className="text-xl sm:text-2xl md:text-4xl text-yellow-400 tracking-wide">NRI FORUM</span>
+                  </div>
+                  <span style={{ fontFamily: '"Lucida Bright", Georgia, serif' }} className="text-teal-300 text-xs sm:text-sm mt-0.5 sm:mt-1 tracking-wide">
+                    Together We Rise
+                  </span>
+              </div>
             </a>
           </div>
           <div className="hidden md:block">
@@ -57,7 +61,7 @@ const Header: React.FC = () => {
               </a>
             </nav>
           </div>
-          <div className="md:hidden">
+          <div className="md:hidden flex-shrink-0 ml-2">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-white hover:text-yellow-400 focus:outline-none p-2 rounded-md hover:bg-blue-800 transition-colors"

@@ -10,7 +10,7 @@ export const NAV_LINKS: NavLink[] = [
 ];
 
 export const INITIAL_SITE_SETTINGS: SiteSettings = {
-  title: 'Vadakara NRI Forum',
+  title: 'Vatakara NRI Forum',
   logo: ''
 };
 

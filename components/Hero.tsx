@@ -12,7 +12,7 @@ const Hero: React.FC = () => {
         <h1 className="font-bold tracking-tight animate-fade-in-down">
           <span className="block text-4xl md:text-6xl mb-4">Welcome to</span>
           <span className="block text-5xl md:text-7xl text-yellow-400 font-extrabold drop-shadow-lg">
-            Vadakara NRI Forum Abu Dhabi
+            Vatakara NRI Forum Abu Dhabi
           </span>
         </h1>
         

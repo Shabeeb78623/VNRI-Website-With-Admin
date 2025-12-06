@@ -25,7 +25,7 @@ const Footer: React.FC = () => {
                  {data.siteSettings?.logo ? (
                    <p className="text-xl font-bold text-white tracking-wide">{data.siteSettings.title}</p>
                  ) : (
-                   <p className="text-2xl font-bold text-white tracking-wide">Vadakara <span className="text-yellow-500">NRI Forum</span></p>
+                   <p className="text-2xl font-bold text-white tracking-wide">Vatakara <span className="text-yellow-500">NRI Forum</span></p>
                  )}
                  <p className="text-sm text-gray-400 font-medium mt-1">Abu Dhabi, UAE</p>
                  <p className="text-xs opacity-60 mt-2">&copy; {new Date().getFullYear()} All Rights Reserved.</p>
