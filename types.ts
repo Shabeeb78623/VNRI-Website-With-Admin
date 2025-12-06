@@ -25,10 +25,16 @@ export interface ContactMessage {
   timestamp: number;
 }
 
+export interface SiteSettings {
+  title: string;
+  logo: string; // Base64 string
+}
+
 export interface AppData {
   mainCommittee: CommitteeMember[];
   balavedhiCommittee: CommitteeMember[];
   galleryImages: GalleryImage[];
+  siteSettings: SiteSettings;
 }
 
 export interface AppContextType {
@@ -46,4 +52,5 @@ export interface AppContextType {
   saveGalleryImage: (image: GalleryImage) => Promise<void>;
   deleteGalleryImage: (id: string) => Promise<void>;
   saveMessage: (msg: ContactMessage) => Promise<void>;
+  saveSiteSettings: (settings: SiteSettings) => Promise<void>;
 }

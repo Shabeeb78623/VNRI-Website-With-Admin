@@ -1,6 +1,7 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { AppContextType, AppData, CommitteeMember, GalleryImage, ContactMessage } from '../types';
-import { INITIAL_MAIN_COMMITTEE, INITIAL_BALAVEDHI_COMMITTEE, INITIAL_GALLERY_IMAGES } from '../constants';
+import type { AppContextType, AppData, CommitteeMember, GalleryImage, ContactMessage, SiteSettings } from '../types';
+import { INITIAL_MAIN_COMMITTEE, INITIAL_BALAVEDHI_COMMITTEE, INITIAL_GALLERY_IMAGES, INITIAL_SITE_SETTINGS } from '../constants';
 import { db } from '../firebaseConfig';
 import { 
   collection, 
@@ -19,6 +20,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [mainCommittee, setMainCommittee] = useState<CommitteeMember[]>([]);
   const [balavedhiCommittee, setBalavedhiCommittee] = useState<CommitteeMember[]>([]);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(INITIAL_SITE_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
   // --- Firestore Sync Logic ---
@@ -28,6 +30,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setMainCommittee(INITIAL_MAIN_COMMITTEE);
       setBalavedhiCommittee(INITIAL_BALAVEDHI_COMMITTEE);
       setGalleryImages(INITIAL_GALLERY_IMAGES);
+      setSiteSettings(INITIAL_SITE_SETTINGS);
       setIsLoading(false);
       return; 
     }
@@ -35,7 +38,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let loadedCount = 0;
     const checkLoading = () => {
       loadedCount++;
-      if (loadedCount >= 3) setIsLoading(false);
+      if (loadedCount >= 4) setIsLoading(false);
     };
 
     // Subscribe to Main Committee
@@ -80,10 +83,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       checkLoading();
     });
 
+    // Subscribe to Site Settings (Single Doc)
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
+        setSiteSettings(docSnap.data() as SiteSettings);
+      } else {
+        // Initialize if not exists
+        if (loadedCount === 0) {
+           setDoc(doc(db, 'settings', 'general'), INITIAL_SITE_SETTINGS);
+        }
+      }
+      checkLoading();
+    }, (err) => {
+      console.error("DB Error Settings:", err);
+      checkLoading();
+    });
+
     return () => {
       unsubMain();
       unsubBalavedhi();
       unsubGallery();
+      unsubSettings();
     };
   }, []);
 
@@ -157,8 +177,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const saveMessage = async (msg: ContactMessage) => {
     if (!db) {
-       // Even if DB is down, we don't block the email submission, 
-       // but the component will handle the email part separately.
        console.warn("Database not connected, skipping Firestore save.");
        return;
     }
@@ -166,8 +184,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await addDoc(collection(db, 'messages'), msg);
     } catch (e: any) {
       console.error("Error sending message to Firestore:", e);
-      // We re-throw so the UI knows something went wrong
       throw e;
+    }
+  };
+
+  const saveSiteSettings = async (settings: SiteSettings) => {
+    if (!db) return;
+    try {
+      await setDoc(doc(db, 'settings', 'general'), settings);
+    } catch (e: any) {
+      console.error("Error saving settings:", e);
+      alert(`Error saving settings: ${e.message}`);
     }
   };
 
@@ -197,7 +224,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const data: AppData = {
     mainCommittee,
     balavedhiCommittee,
-    galleryImages
+    galleryImages,
+    siteSettings
   };
 
   return (
@@ -213,7 +241,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteMember,
       saveGalleryImage,
       deleteGalleryImage,
-      saveMessage
+      saveMessage,
+      saveSiteSettings
     }}>
       {children}
     </AppContext.Provider>

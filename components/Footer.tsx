@@ -3,7 +3,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 
 const Footer: React.FC = () => {
-  const { navigateTo } = useApp();
+  const { navigateTo, data } = useApp();
 
   const handleSecretClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -17,10 +17,19 @@ const Footer: React.FC = () => {
           
           {/* Left Side: Copyright */}
           <div className="flex items-center gap-6 order-2 md:order-1">
-            <div className="text-center md:text-left">
-              <p className="text-2xl font-bold text-white tracking-wide">Vadakara <span className="text-yellow-500">NRI Forum</span></p>
-              <p className="text-sm text-gray-400 font-medium mt-1">Abu Dhabi, UAE</p>
-              <p className="text-xs opacity-60 mt-2">&copy; {new Date().getFullYear()} All Rights Reserved.</p>
+            <div className="text-center md:text-left flex items-center gap-3">
+              {data.siteSettings?.logo && (
+                 <img src={data.siteSettings.logo} alt="Logo" className="h-12 w-auto object-contain" />
+              )}
+              <div>
+                 {data.siteSettings?.logo ? (
+                   <p className="text-xl font-bold text-white tracking-wide">{data.siteSettings.title}</p>
+                 ) : (
+                   <p className="text-2xl font-bold text-white tracking-wide">Vadakara <span className="text-yellow-500">NRI Forum</span></p>
+                 )}
+                 <p className="text-sm text-gray-400 font-medium mt-1">Abu Dhabi, UAE</p>
+                 <p className="text-xs opacity-60 mt-2">&copy; {new Date().getFullYear()} All Rights Reserved.</p>
+              </div>
             </div>
           </div>
 
@@ -61,14 +70,14 @@ const Footer: React.FC = () => {
                 Shabeeb K.K
                </button>
                <a 
-                 href="mailto:shabeebkk@gmail.com" 
+                 href="mailto:shabeebkk10@gmail.com" 
                  className="text-sm text-yellow-500 hover:text-yellow-300 transition-colors flex items-center gap-1 mt-1"
                >
                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                  </svg>
-                 shabeebkk@gmail.com
+                 shabeebkk10@gmail.com
                </a>
              </div>
           </div>

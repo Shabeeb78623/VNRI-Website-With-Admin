@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import type { CommitteeMember, GalleryImage } from '../../types';
@@ -10,12 +11,17 @@ const Dashboard: React.FC = () => {
     saveMember, 
     deleteMember, 
     saveGalleryImage, 
-    deleteGalleryImage 
+    deleteGalleryImage,
+    saveSiteSettings
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'main' | 'balavedhi' | 'gallery'>('main');
+  const [activeTab, setActiveTab] = useState<'main' | 'balavedhi' | 'gallery' | 'settings'>('main');
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  
+  // Settings Local State
+  const [settingsTitle, setSettingsTitle] = useState(data.siteSettings.title);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -108,6 +114,25 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // --- Settings Logic ---
+  const handleLogoUpload = async (file: File) => {
+    handleFileUpload(file, 'logo', async (base64) => {
+      await saveSiteSettings({ ...data.siteSettings, logo: base64 });
+    });
+  };
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true);
+    await saveSiteSettings({ ...data.siteSettings, title: settingsTitle });
+    setIsSavingSettings(false);
+  };
+
+  const handleRemoveLogo = async () => {
+    if(window.confirm('Are you sure you want to remove the logo?')) {
+      await saveSiteSettings({ ...data.siteSettings, logo: '' });
+    }
+  };
+
   const renderMemberEditor = (listType: 'main' | 'balavedhi', members: CommitteeMember[]) => (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-blue-50 p-4 rounded-lg">
@@ -148,7 +173,7 @@ const Dashboard: React.FC = () => {
                   />
                 </label>
               </div>
-              <button onClick={() => handleUpdateMember(listType, member, 'image', '')} className="text-xs text-red-500 underline">Remove Photo</button>
+              <button onClick={() => handleUpdateMember(listType, member, 'image', '')} className="text-xs text-red-500 underline">Clear Photo</button>
             </div>
 
             {/* Inputs */}
@@ -226,6 +251,7 @@ const Dashboard: React.FC = () => {
           <button onClick={() => setActiveTab('main')} className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 ${activeTab === 'main' ? 'bg-blue-900 text-white shadow-lg scale-105' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>Main Committee</button>
           <button onClick={() => setActiveTab('balavedhi')} className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 ${activeTab === 'balavedhi' ? 'bg-blue-900 text-white shadow-lg scale-105' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>Balavedhi</button>
           <button onClick={() => setActiveTab('gallery')} className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 ${activeTab === 'gallery' ? 'bg-blue-900 text-white shadow-lg scale-105' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>Gallery</button>
+          <button onClick={() => setActiveTab('settings')} className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 ${activeTab === 'settings' ? 'bg-blue-900 text-white shadow-lg scale-105' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>Settings</button>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 min-h-[500px]">
@@ -293,6 +319,72 @@ const Dashboard: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="flex justify-between items-center bg-blue-50 p-4 rounded-lg">
+                 <h3 className="text-xl font-bold text-blue-900">Site Settings</h3>
+              </div>
+
+              {/* Logo Section */}
+              <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">Site Logo</h4>
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                  <div className="w-full md:w-1/3 flex flex-col items-center">
+                    <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 relative group overflow-hidden">
+                       {uploadingId === 'logo' ? (
+                          <div className="text-gray-500">Processing...</div>
+                       ) : data.siteSettings.logo ? (
+                          <img src={data.siteSettings.logo} alt="Site Logo" className="max-h-full max-w-full object-contain p-2" />
+                       ) : (
+                          <div className="text-gray-400 text-sm">No Logo Uploaded</div>
+                       )}
+                    </div>
+                    {data.siteSettings.logo && (
+                      <button onClick={handleRemoveLogo} className="mt-2 text-red-500 text-sm underline hover:text-red-700">Remove Logo</button>
+                    )}
+                  </div>
+                  <div className="flex-1 w-full">
+                     <p className="text-sm text-gray-600 mb-4">
+                       Upload a logo to appear in the website header and footer. It will replace the default text. 
+                       <br/>Recommended: PNG format with transparent background.
+                     </p>
+                     <label className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors font-medium">
+                        Upload Logo
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]);
+                        }} />
+                     </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Title Section */}
+              <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">Site Title</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Application Name</label>
+                    <input 
+                      type="text" 
+                      value={settingsTitle} 
+                      onChange={(e) => setSettingsTitle(e.target.value)}
+                      className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">This is used for SEO and fallback text if no logo is present.</p>
+                  </div>
+                  <button 
+                    onClick={handleSaveSettings} 
+                    disabled={isSavingSettings}
+                    className="bg-blue-800 text-white px-6 py-2 rounded-lg hover:bg-blue-900 transition-colors disabled:opacity-50"
+                  >
+                    {isSavingSettings ? 'Saving...' : 'Save Title'}
+                  </button>
+                </div>
+              </div>
+
             </div>
           )}
         </div>

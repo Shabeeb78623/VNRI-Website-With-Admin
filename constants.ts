@@ -1,5 +1,5 @@
 
-import { CommitteeMember, NavLink, GalleryImage } from './types';
+import { CommitteeMember, NavLink, GalleryImage, SiteSettings } from './types';
 
 export const NAV_LINKS: NavLink[] = [
   { name: 'Home', href: '#home' },
@@ -8,6 +8,11 @@ export const NAV_LINKS: NavLink[] = [
   { name: 'Gallery', href: '#gallery' },
   { name: 'Contact', href: '#contact' },
 ];
+
+export const INITIAL_SITE_SETTINGS: SiteSettings = {
+  title: 'Vadakara NRI Forum',
+  logo: ''
+};
 
 export const INITIAL_MAIN_COMMITTEE: CommitteeMember[] = [
   { id: 'mc1', name: 'Basheer K', role: 'President', avatarText: 'President', image: '' },

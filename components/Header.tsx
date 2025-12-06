@@ -2,9 +2,11 @@
 import React, { useState } from 'react';
 import { NAV_LINKS } from '../constants';
 import type { NavLink } from '../types';
+import { useApp } from '../context/AppContext';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data } = useApp();
 
   const renderNavLinks = (links: NavLink[], className: string) => (
     <ul className={className}>
@@ -28,8 +30,18 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between h-24">
           <div className="flex-shrink-0 flex items-center py-2">
             <a href="#home" className="flex flex-col sm:flex-row sm:items-baseline gap-1 hover:opacity-90 transition-opacity group">
-              <span className="text-2xl md:text-3xl font-bold text-white tracking-tight group-hover:text-gray-100">Vadakara</span> 
-              <span className="text-2xl md:text-3xl font-extrabold text-yellow-400 tracking-wider uppercase drop-shadow-sm">NRI Forum</span>
+              {data.siteSettings?.logo ? (
+                <img 
+                  src={data.siteSettings.logo} 
+                  alt={data.siteSettings.title} 
+                  className="h-16 w-auto object-contain"
+                />
+              ) : (
+                <>
+                  <span className="text-2xl md:text-3xl font-bold text-white tracking-tight group-hover:text-gray-100">Vadakara</span> 
+                  <span className="text-2xl md:text-3xl font-extrabold text-yellow-400 tracking-wider uppercase drop-shadow-sm">NRI Forum</span>
+                </>
+              )}
             </a>
           </div>
           <div className="hidden md:block">
