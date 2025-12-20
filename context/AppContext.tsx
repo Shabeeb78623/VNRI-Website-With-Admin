@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AppContextType, AppData, CommitteeMember, GalleryImage, ContactMessage, SiteSettings } from '../types';
 import { INITIAL_MAIN_COMMITTEE, INITIAL_BALAVEDHI_COMMITTEE, INITIAL_GALLERY_IMAGES, INITIAL_SITE_SETTINGS } from '../constants';
@@ -25,7 +26,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // --- Firestore Sync Logic ---
   useEffect(() => {
     if (!db) {
-      // Fallback if DB not connected
       setMainCommittee(INITIAL_MAIN_COMMITTEE);
       setBalavedhiCommittee(INITIAL_BALAVEDHI_COMMITTEE);
       setGalleryImages(INITIAL_GALLERY_IMAGES);
@@ -35,76 +35,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     let loadedCount = 0;
+    const TOTAL_SOURCES = 4;
     const checkLoading = () => {
       loadedCount++;
-      if (loadedCount >= 4) setIsLoading(false);
+      if (loadedCount >= TOTAL_SOURCES) setIsLoading(false);
     };
 
-    // Subscribe to Main Committee
+    // Helper to handle permission errors gracefully on read
+    const handleReadError = (err: any, defaultData: any, setter: any) => {
+      console.warn(`Firestore Read Error (Using default data):`, err.message);
+      setter(defaultData);
+      checkLoading();
+    };
+
     const unsubMain = onSnapshot(collection(db, 'main_committee'), (snapshot) => {
-      if (snapshot.empty && loadedCount === 0) {
+      if (!snapshot.empty) {
+        setMainCommittee(snapshot.docs.map(d => d.data() as CommitteeMember).sort((a,b) => a.id.localeCompare(b.id)));
+      } else if (loadedCount === 0) {
         setMainCommittee(INITIAL_MAIN_COMMITTEE);
-        seedCollection('main_committee', INITIAL_MAIN_COMMITTEE);
-      } else {
-        const members = snapshot.docs.map(d => d.data() as CommitteeMember);
-        setMainCommittee(members.sort((a,b) => a.id.localeCompare(b.id)));
       }
       checkLoading();
-    }, (err) => {
-      console.error("DB Error Main:", err);
-      setMainCommittee(INITIAL_MAIN_COMMITTEE);
-      checkLoading();
-    });
+    }, (err) => handleReadError(err, INITIAL_MAIN_COMMITTEE, setMainCommittee));
 
-    // Subscribe to Balavedhi Committee
     const unsubBalavedhi = onSnapshot(collection(db, 'balavedhi_committee'), (snapshot) => {
-      if (snapshot.empty && loadedCount === 0) {
+      if (!snapshot.empty) {
+        setBalavedhiCommittee(snapshot.docs.map(d => d.data() as CommitteeMember).sort((a,b) => a.id.localeCompare(b.id)));
+      } else if (loadedCount === 0) {
         setBalavedhiCommittee(INITIAL_BALAVEDHI_COMMITTEE);
-        seedCollection('balavedhi_committee', INITIAL_BALAVEDHI_COMMITTEE);
-      } else {
-        const members = snapshot.docs.map(d => d.data() as CommitteeMember);
-        setBalavedhiCommittee(members.sort((a,b) => a.id.localeCompare(b.id)));
       }
       checkLoading();
-    }, (err) => {
-      console.error("DB Error Balavedhi:", err);
-      setBalavedhiCommittee(INITIAL_BALAVEDHI_COMMITTEE);
-      checkLoading();
-    });
+    }, (err) => handleReadError(err, INITIAL_BALAVEDHI_COMMITTEE, setBalavedhiCommittee));
 
-    // Subscribe to Gallery
     const unsubGallery = onSnapshot(collection(db, 'gallery'), (snapshot) => {
-      if (snapshot.empty && loadedCount === 0) {
+      if (!snapshot.empty) {
+        setGalleryImages(snapshot.docs.map(d => d.data() as GalleryImage));
+      } else if (loadedCount === 0) {
         setGalleryImages(INITIAL_GALLERY_IMAGES);
-        seedCollection('gallery', INITIAL_GALLERY_IMAGES);
-      } else {
-        const images = snapshot.docs.map(d => d.data() as GalleryImage);
-        setGalleryImages(images);
       }
       checkLoading();
-    }, (err) => {
-      console.error("DB Error Gallery:", err);
-      setGalleryImages(INITIAL_GALLERY_IMAGES);
-      checkLoading();
-    });
+    }, (err) => handleReadError(err, INITIAL_GALLERY_IMAGES, setGalleryImages));
 
-    // Subscribe to Site Settings (Single Doc)
     const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
       if (docSnap.exists()) {
         setSiteSettings(docSnap.data() as SiteSettings);
-      } else {
-        // Initialize if not exists
-        if (loadedCount === 0) {
-           setSiteSettings(INITIAL_SITE_SETTINGS);
-           setDoc(doc(db, 'settings', 'general'), INITIAL_SITE_SETTINGS).catch(e => console.error("Settings seed failed", e));
-        }
+      } else if (loadedCount === 0) {
+        setSiteSettings(INITIAL_SITE_SETTINGS);
       }
       checkLoading();
-    }, (err) => {
-      console.error("DB Error Settings:", err);
-      setSiteSettings(INITIAL_SITE_SETTINGS);
-      checkLoading();
-    });
+    }, (err) => handleReadError(err, INITIAL_SITE_SETTINGS, setSiteSettings));
 
     return () => {
       unsubMain();
@@ -114,95 +92,119 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Helper to seed initial data
-  const seedCollection = async (colName: string, data: any[]) => {
-    if (!db) return;
-    console.log(`Seeding ${colName}...`);
-    try {
-      const batch = writeBatch(db);
-      data.forEach(item => {
-        const ref = doc(db, colName, item.id);
-        batch.set(ref, item);
-      });
-      await batch.commit();
-    } catch (e: any) {
-      console.error("Seeding failed:", e);
-    }
-  };
-
-  // --- CRUD Operations ---
+  // --- CRUD Operations with Local Fallback ---
 
   const saveMember = async (type: 'main' | 'balavedhi', member: CommitteeMember) => {
+    // Optimistic Update / Fallback function
+    const updateLocal = () => {
+      const setter = type === 'main' ? setMainCommittee : setBalavedhiCommittee;
+      setter(prev => {
+        const index = prev.findIndex(m => m.id === member.id);
+        if (index >= 0) {
+          const newArr = [...prev];
+          newArr[index] = member;
+          return newArr;
+        }
+        return [...prev, member];
+      });
+    };
+
     if (!db) {
-      alert("Database not connected. Check firebaseConfig.ts");
+      updateLocal();
+      alert("Database not connected. Saved locally.");
       return;
     }
-    const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
+
     try {
+      const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
       await setDoc(doc(db, colName, member.id), member);
     } catch (e: any) {
-      console.error("Error saving member:", e);
-      alert(`Error saving member: ${e.message}. Check your internet or database permissions.`);
+      console.warn("Firestore write failed, falling back to local state:", e.message);
+      updateLocal();
+      // Only alert if it's a permission error specifically
+      if (e.code === 'permission-denied') {
+        alert("Permission Denied: Saved locally only. (Update Firestore Rules in Console to persist)");
+      } else {
+        alert(`Saved locally (Error: ${e.message})`);
+      }
     }
   };
 
   const deleteMember = async (type: 'main' | 'balavedhi', id: string) => {
-    if (!db) {
-      console.error("Database not initialized");
-      return;
-    }
-    const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
-    console.log(`Attempting to delete ${id} from ${colName}`);
+    const updateLocal = () => {
+      const setter = type === 'main' ? setMainCommittee : setBalavedhiCommittee;
+      setter(prev => prev.filter(m => m.id !== id));
+    };
+
+    if (!db) { updateLocal(); return; }
+
     try {
+      const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
       await deleteDoc(doc(db, colName, id));
-      console.log("Deletion successful");
     } catch (e: any) {
-      console.error("Error deleting member:", e);
-      alert(`Error deleting: ${e.message}`);
+      console.warn("Firestore delete failed, using local fallback:", e.message);
+      updateLocal();
+      alert("Deleted locally (Permission Denied)");
     }
   };
 
   const saveGalleryImage = async (image: GalleryImage) => {
-    if (!db) return;
+    const updateLocal = () => {
+      setGalleryImages(prev => {
+        const index = prev.findIndex(img => img.id === image.id);
+        if (index >= 0) {
+           const newArr = [...prev];
+           newArr[index] = image;
+           return newArr;
+        }
+        return [...prev, image];
+      });
+    };
+
+    if (!db) { updateLocal(); return; }
+
     try {
       await setDoc(doc(db, 'gallery', image.id), image);
     } catch (e: any) {
-      console.error("Error saving image:", e);
-      alert(`Error saving image: ${e.message}`);
+      console.warn("Firestore save image failed:", e.message);
+      updateLocal();
+      alert("Image saved locally (Permission Denied)");
     }
   };
 
   const deleteGalleryImage = async (id: string) => {
-    if (!db) return;
+    const updateLocal = () => setGalleryImages(prev => prev.filter(img => img.id !== id));
+    
+    if (!db) { updateLocal(); return; }
+
     try {
       await deleteDoc(doc(db, 'gallery', id));
     } catch (e: any) {
-      console.error("Error deleting image:", e);
-      alert(`Error deleting: ${e.message}`);
-    }
-  };
-
-  const saveMessage = async (msg: ContactMessage) => {
-    if (!db) {
-       console.warn("Database not connected, skipping Firestore save.");
-       return;
-    }
-    try {
-      await addDoc(collection(db, 'messages'), msg);
-    } catch (e: any) {
-      console.error("Error sending message to Firestore:", e);
-      // We don't rethrow here so the contact form can still succeed via Email if Firestore fails
-      // throw e; 
+      console.warn("Firestore delete image failed:", e.message);
+      updateLocal();
+      alert("Image deleted locally (Permission Denied)");
     }
   };
 
   const saveSiteSettings = async (settings: SiteSettings) => {
-    if (!db) return;
+    const updateLocal = () => setSiteSettings(settings);
+
+    if (!db) { updateLocal(); return; }
+
     try {
       await setDoc(doc(db, 'settings', 'general'), settings);
     } catch (e: any) {
-      console.error("Error saving settings:", e);
-      alert(`Error saving settings: ${e.message}`);
+      console.warn("Settings save failed:", e.message);
+      updateLocal();
+      alert("Settings saved locally (Permission Denied)");
+    }
+  };
+  
+  // Message is fire-and-forget for now
+  const saveMessage = async (msg: ContactMessage) => {
+    if (db) {
+       try { await addDoc(collection(db, 'messages'), msg); } 
+       catch (e) { console.warn("Message save failed", e); }
     }
   };
 
@@ -228,7 +230,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo(0, 0);
   };
 
-  // Derived full data object for compatibility
   const data: AppData = {
     mainCommittee,
     balavedhiCommittee,
