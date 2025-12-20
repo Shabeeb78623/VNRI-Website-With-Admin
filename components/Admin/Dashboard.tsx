@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import type { CommitteeMember, GalleryImage } from '../../types';
 
@@ -12,7 +12,8 @@ const Dashboard: React.FC = () => {
     deleteMember, 
     saveGalleryImage, 
     deleteGalleryImage,
-    saveSiteSettings
+    saveSiteSettings,
+    dbError
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'main' | 'balavedhi' | 'gallery' | 'settings'>('main');
@@ -32,22 +33,26 @@ const Dashboard: React.FC = () => {
       reader.readAsDataURL(file);
       reader.onload = (event) => {
         const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          // Resize logic: Max width 800px for performance
-          const MAX_WIDTH = 800;
-          const scaleSize = MAX_WIDTH / img.width;
-          canvas.width = MAX_WIDTH;
-          canvas.height = img.height * scaleSize;
-          
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          
-          // Convert to JPEG with 0.7 quality
-          resolve(canvas.toDataURL('image/jpeg', 0.7)); 
-        };
-        img.onerror = (err) => reject(err);
+        if (event.target?.result) {
+            img.src = event.target.result as string;
+            img.onload = () => {
+            const canvas = document.createElement('canvas');
+            // Resize logic: Max width 800px for performance and storage efficiency
+            const MAX_WIDTH = 800;
+            const scaleSize = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scaleSize;
+            
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to JPEG with 0.7 quality to stay well within Firestore 1MB limit
+            resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+            };
+            img.onerror = (err) => reject(err);
+        } else {
+            reject(new Error("File read failed"));
+        }
       };
       reader.onerror = (err) => reject(err);
     });
@@ -57,7 +62,12 @@ const Dashboard: React.FC = () => {
     try {
       setUploadingId(id);
       const base64 = await compressImage(file);
-      await callback(base64);
+      // Ensure we are passing a string
+      if (typeof base64 === 'string') {
+          await callback(base64);
+      } else {
+          throw new Error("Image processing returned non-string data");
+      }
     } catch (error) {
       console.error("Compression failed", error);
       alert("Failed to process image.");
@@ -134,21 +144,35 @@ const Dashboard: React.FC = () => {
   };
 
   // Reusable Input Component to handle blur saving (prevents spamming Firestore)
+  // Updated to use controlled state to prevent defaultValue issues
   const AutosaveInput = ({ 
     value, 
     onSave, 
     placeholder 
-  }: { value: string, onSave: (val: string) => void, placeholder: string }) => (
-    <input 
-      type="text" 
-      defaultValue={value} 
-      onBlur={(e) => {
-        if (e.target.value !== value) onSave(e.target.value);
-      }}
-      className="w-full border border-gray-300 p-2 rounded focus:ring-blue-500 outline-none focus:border-blue-500 transition-colors" 
-      placeholder={placeholder}
-    />
-  );
+  }: { value: string, onSave: (val: string) => void, placeholder: string }) => {
+    const [localValue, setLocalValue] = useState(value);
+
+    useEffect(() => {
+        setLocalValue(value || '');
+    }, [value]);
+
+    const handleBlur = () => {
+        if (localValue !== value) {
+            onSave(localValue);
+        }
+    };
+
+    return (
+        <input 
+        type="text" 
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={handleBlur}
+        className="w-full border border-gray-300 p-2 rounded focus:ring-blue-500 outline-none focus:border-blue-500 transition-colors" 
+        placeholder={placeholder}
+        />
+    );
+  };
 
   const renderMemberEditor = (listType: 'main' | 'balavedhi', members: CommitteeMember[]) => (
     <div className="space-y-6">
@@ -249,8 +273,33 @@ const Dashboard: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans pb-20">
-      <nav className="bg-gradient-to-r from-blue-900 to-blue-800 text-white px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
+    <div className="min-h-screen bg-gray-100 font-sans pb-20 relative">
+      {/* DB Locked Warning Banner */}
+      {dbError === 'permission-denied' && (
+        <div className="bg-red-600 text-white px-4 py-3 shadow-lg z-50 sticky top-0">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+               </svg>
+               <div>
+                 <p className="font-bold">Database Locked (Strict Mode Detected)</p>
+                 <p className="text-sm text-red-100 mt-1">Your changes are being saved locally only. To enable cloud saving, you must update your Firebase Rules.</p>
+               </div>
+            </div>
+            <a 
+              href="https://console.firebase.google.com/project/_/firestore/rules" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-white text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-50 transition-colors whitespace-nowrap"
+            >
+              Open Firebase Console
+            </a>
+          </div>
+        </div>
+      )}
+
+      <nav className="bg-gradient-to-r from-blue-900 to-blue-800 text-white px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-40">
         <div className="flex items-center gap-2">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">Admin Dashboard</h1>
             <span className="bg-blue-700 text-xs px-2 py-1 rounded-full text-blue-100 font-mono">PRO</span>

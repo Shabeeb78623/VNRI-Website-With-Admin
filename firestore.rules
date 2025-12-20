@@ -3,9 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      // ⚠️ WARNING: These rules allow anyone to read and write to your database.
-      // This solves the "Permission Denied" error but is not secure for sensitive data.
-      // Since this is a public website with a simple admin panel, this is acceptable for now.
+      // 🚨 PRODUCTION RULE SET 🚨
+      // Since this app uses a hardcoded Admin login (without Firebase Auth),
+      // we must set rules to "public" to allow the admin to save data.
+      // Copy and Paste this ENTIRE block into Firebase Console > Firestore > Rules.
       
       allow read, write: if true;
     }

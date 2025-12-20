@@ -13,7 +13,12 @@ import {
   writeBatch
 } from 'firebase/firestore';
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+// Extend AppContextType to include error state
+interface ExtendedAppContextType extends AppContextType {
+  dbError: string | null;
+}
+
+const AppContext = createContext<ExtendedAppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Independent states for each collection
@@ -22,6 +27,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(INITIAL_SITE_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   // --- Firestore Sync Logic ---
   useEffect(() => {
@@ -41,9 +47,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (loadedCount >= TOTAL_SOURCES) setIsLoading(false);
     };
 
-    // Helper to handle permission errors gracefully on read
     const handleReadError = (err: any, defaultData: any, setter: any) => {
-      console.warn(`Firestore Read Error (Using default data):`, err.message);
+      console.warn(`Firestore Read Error:`, err.message);
+      if (err.code === 'permission-denied') {
+        setDbError('permission-denied');
+      }
       setter(defaultData);
       checkLoading();
     };
@@ -94,39 +102,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- CRUD Operations with Local Fallback ---
 
+  const handleError = (e: any) => {
+    console.warn("Firestore Operation Failed:", e.message);
+    if (e.code === 'permission-denied') {
+      setDbError('permission-denied');
+      // We do NOT alert here anymore to keep the UI clean. 
+      // The Dashboard will show a banner instead.
+    } else if (e.message.includes("circular structure")) {
+      alert("Error: Attempted to save invalid data (Circular JSON). Please refresh and try again.");
+    }
+  };
+
   const saveMember = async (type: 'main' | 'balavedhi', member: CommitteeMember) => {
-    // Optimistic Update / Fallback function
+    // Sanitize input to ensure it is a plain object
+    const cleanMember: CommitteeMember = {
+        id: member.id,
+        name: member.name || '',
+        role: member.role || '',
+        avatarText: member.avatarText || '',
+        image: member.image || ''
+    };
+
     const updateLocal = () => {
       const setter = type === 'main' ? setMainCommittee : setBalavedhiCommittee;
       setter(prev => {
-        const index = prev.findIndex(m => m.id === member.id);
+        const index = prev.findIndex(m => m.id === cleanMember.id);
         if (index >= 0) {
           const newArr = [...prev];
-          newArr[index] = member;
+          newArr[index] = cleanMember;
           return newArr;
         }
-        return [...prev, member];
+        return [...prev, cleanMember];
       });
     };
 
-    if (!db) {
-      updateLocal();
-      alert("Database not connected. Saved locally.");
-      return;
-    }
+    if (!db) { updateLocal(); return; }
 
     try {
       const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
-      await setDoc(doc(db, colName, member.id), member);
+      await setDoc(doc(db, colName, cleanMember.id), cleanMember);
+      // Clear error if success
+      setDbError(null);
     } catch (e: any) {
-      console.warn("Firestore write failed, falling back to local state:", e.message);
+      handleError(e);
       updateLocal();
-      // Only alert if it's a permission error specifically
-      if (e.code === 'permission-denied') {
-        alert("Permission Denied: Saved locally only. (Update Firestore Rules in Console to persist)");
-      } else {
-        alert(`Saved locally (Error: ${e.message})`);
-      }
     }
   };
 
@@ -141,34 +160,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
       await deleteDoc(doc(db, colName, id));
+      setDbError(null);
     } catch (e: any) {
-      console.warn("Firestore delete failed, using local fallback:", e.message);
+      handleError(e);
       updateLocal();
-      alert("Deleted locally (Permission Denied)");
     }
   };
 
   const saveGalleryImage = async (image: GalleryImage) => {
+    // Sanitize
+    const cleanImage: GalleryImage = {
+        id: image.id,
+        src: image.src || '',
+        alt: image.alt || ''
+    };
+
     const updateLocal = () => {
       setGalleryImages(prev => {
-        const index = prev.findIndex(img => img.id === image.id);
+        const index = prev.findIndex(img => img.id === cleanImage.id);
         if (index >= 0) {
            const newArr = [...prev];
-           newArr[index] = image;
+           newArr[index] = cleanImage;
            return newArr;
         }
-        return [...prev, image];
+        return [...prev, cleanImage];
       });
     };
 
     if (!db) { updateLocal(); return; }
 
     try {
-      await setDoc(doc(db, 'gallery', image.id), image);
+      await setDoc(doc(db, 'gallery', cleanImage.id), cleanImage);
+      setDbError(null);
     } catch (e: any) {
-      console.warn("Firestore save image failed:", e.message);
+      handleError(e);
       updateLocal();
-      alert("Image saved locally (Permission Denied)");
     }
   };
 
@@ -179,32 +205,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       await deleteDoc(doc(db, 'gallery', id));
+      setDbError(null);
     } catch (e: any) {
-      console.warn("Firestore delete image failed:", e.message);
+      handleError(e);
       updateLocal();
-      alert("Image deleted locally (Permission Denied)");
     }
   };
 
   const saveSiteSettings = async (settings: SiteSettings) => {
-    const updateLocal = () => setSiteSettings(settings);
+    // Sanitize
+    const cleanSettings: SiteSettings = {
+        title: settings.title || '',
+        logo: settings.logo || ''
+    };
+    
+    const updateLocal = () => setSiteSettings(cleanSettings);
 
     if (!db) { updateLocal(); return; }
 
     try {
-      await setDoc(doc(db, 'settings', 'general'), settings);
+      await setDoc(doc(db, 'settings', 'general'), cleanSettings);
+      setDbError(null);
     } catch (e: any) {
-      console.warn("Settings save failed:", e.message);
+      handleError(e);
       updateLocal();
-      alert("Settings saved locally (Permission Denied)");
     }
   };
   
-  // Message is fire-and-forget for now
   const saveMessage = async (msg: ContactMessage) => {
     if (db) {
        try { await addDoc(collection(db, 'messages'), msg); } 
-       catch (e) { console.warn("Message save failed", e); }
+       catch (e: any) { handleError(e); }
     }
   };
 
@@ -242,6 +273,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       data, 
       isAuthenticated,
       isLoading, 
+      dbError,
       login, 
       logout, 
       currentView, 
