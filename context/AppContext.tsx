@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AppContextType, AppData, CommitteeMember, GalleryImage, ContactMessage, SiteSettings } from '../types';
 import { INITIAL_MAIN_COMMITTEE, INITIAL_BALAVEDHI_COMMITTEE, INITIAL_GALLERY_IMAGES, INITIAL_SITE_SETTINGS } from '../constants';
@@ -44,6 +43,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Subscribe to Main Committee
     const unsubMain = onSnapshot(collection(db, 'main_committee'), (snapshot) => {
       if (snapshot.empty && loadedCount === 0) {
+        setMainCommittee(INITIAL_MAIN_COMMITTEE);
         seedCollection('main_committee', INITIAL_MAIN_COMMITTEE);
       } else {
         const members = snapshot.docs.map(d => d.data() as CommitteeMember);
@@ -52,12 +52,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       checkLoading();
     }, (err) => {
       console.error("DB Error Main:", err);
+      setMainCommittee(INITIAL_MAIN_COMMITTEE);
       checkLoading();
     });
 
     // Subscribe to Balavedhi Committee
     const unsubBalavedhi = onSnapshot(collection(db, 'balavedhi_committee'), (snapshot) => {
       if (snapshot.empty && loadedCount === 0) {
+        setBalavedhiCommittee(INITIAL_BALAVEDHI_COMMITTEE);
         seedCollection('balavedhi_committee', INITIAL_BALAVEDHI_COMMITTEE);
       } else {
         const members = snapshot.docs.map(d => d.data() as CommitteeMember);
@@ -66,12 +68,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       checkLoading();
     }, (err) => {
       console.error("DB Error Balavedhi:", err);
+      setBalavedhiCommittee(INITIAL_BALAVEDHI_COMMITTEE);
       checkLoading();
     });
 
     // Subscribe to Gallery
     const unsubGallery = onSnapshot(collection(db, 'gallery'), (snapshot) => {
       if (snapshot.empty && loadedCount === 0) {
+        setGalleryImages(INITIAL_GALLERY_IMAGES);
         seedCollection('gallery', INITIAL_GALLERY_IMAGES);
       } else {
         const images = snapshot.docs.map(d => d.data() as GalleryImage);
@@ -80,6 +84,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       checkLoading();
     }, (err) => {
       console.error("DB Error Gallery:", err);
+      setGalleryImages(INITIAL_GALLERY_IMAGES);
       checkLoading();
     });
 
@@ -90,12 +95,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         // Initialize if not exists
         if (loadedCount === 0) {
-           setDoc(doc(db, 'settings', 'general'), INITIAL_SITE_SETTINGS);
+           setSiteSettings(INITIAL_SITE_SETTINGS);
+           setDoc(doc(db, 'settings', 'general'), INITIAL_SITE_SETTINGS).catch(e => console.error("Settings seed failed", e));
         }
       }
       checkLoading();
     }, (err) => {
       console.error("DB Error Settings:", err);
+      setSiteSettings(INITIAL_SITE_SETTINGS);
       checkLoading();
     });
 
@@ -135,7 +142,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await setDoc(doc(db, colName, member.id), member);
     } catch (e: any) {
       console.error("Error saving member:", e);
-      alert(`Error saving member: ${e.message}`);
+      alert(`Error saving member: ${e.message}. Check your internet or database permissions.`);
     }
   };
 
@@ -184,7 +191,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await addDoc(collection(db, 'messages'), msg);
     } catch (e: any) {
       console.error("Error sending message to Firestore:", e);
-      throw e;
+      // We don't rethrow here so the contact form can still succeed via Email if Firestore fails
+      // throw e; 
     }
   };
 

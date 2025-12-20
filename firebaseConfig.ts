@@ -1,6 +1,5 @@
-
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 // --- INSTRUCTIONS ---
 // 1. Go to: https://console.firebase.google.com/
@@ -9,8 +8,7 @@ import { getFirestore } from "firebase/firestore";
 // 4. Scroll down to "Your apps". Select "Config".
 // 5. Copy the values CAREFULLY. Each field is DIFFERENT.
 
-export const firebaseConfig =
- {
+export const firebaseConfig = {
   apiKey: "AIzaSyDc1c8_AyOn3Rfp_-YlZYwLAf716xHT7qk",            
   authDomain: "vnri-67.firebaseapp.com",    
   projectId: "vnri-67",      
@@ -20,8 +18,8 @@ export const firebaseConfig =
 
 // Initialize Firebase
 // We use a try-catch here so the app doesn't crash white-screen if config is bad
-let app;
-let dbInstance;
+let app: FirebaseApp | undefined;
+let dbInstance: Firestore | undefined;
 
 try {
   app = initializeApp(firebaseConfig);
