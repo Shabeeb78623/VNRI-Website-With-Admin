@@ -11,7 +11,8 @@ export const NAV_LINKS: NavLink[] = [
 
 export const INITIAL_SITE_SETTINGS: SiteSettings = {
   title: 'Vatakara NRI Forum',
-  logo: ''
+  logo: '',
+  favicon: ''
 };
 
 export const INITIAL_MAIN_COMMITTEE: CommitteeMember[] = [

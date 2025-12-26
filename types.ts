@@ -28,6 +28,7 @@ export interface ContactMessage {
 export interface SiteSettings {
   title: string;
   logo: string; // Base64 string
+  favicon?: string; // Base64 string
 }
 
 export interface AppData {

@@ -27,7 +27,8 @@ const Dashboard: React.FC = () => {
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
   // --- Image Compression Logic ---
-  const compressImage = (file: File): Promise<string> => {
+  // Updated to accept maxWidth to allow smaller processing for favicons
+  const compressImage = (file: File, maxWidth: number = 800): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -37,11 +38,13 @@ const Dashboard: React.FC = () => {
             img.src = event.target.result as string;
             img.onload = () => {
             const canvas = document.createElement('canvas');
-            // Resize logic: Max width 800px for performance and storage efficiency
-            const MAX_WIDTH = 800;
-            const scaleSize = MAX_WIDTH / img.width;
-            canvas.width = MAX_WIDTH;
-            canvas.height = img.height * scaleSize;
+            // Resize logic
+            const scaleSize = maxWidth / img.width;
+            // If image is smaller than max, don't upscale
+            const finalScale = scaleSize < 1 ? scaleSize : 1;
+            
+            canvas.width = img.width * finalScale;
+            canvas.height = img.height * finalScale;
             
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -58,10 +61,10 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  const handleFileUpload = async (file: File, id: string, callback: (base64: string) => void) => {
+  const handleFileUpload = async (file: File, id: string, callback: (base64: string) => void, maxWidth: number = 800) => {
     try {
       setUploadingId(id);
-      const base64 = await compressImage(file);
+      const base64 = await compressImage(file, maxWidth);
       // Ensure we are passing a string
       if (typeof base64 === 'string') {
           await callback(base64);
@@ -128,7 +131,13 @@ const Dashboard: React.FC = () => {
   const handleLogoUpload = async (file: File) => {
     handleFileUpload(file, 'logo', async (base64) => {
       await saveSiteSettings({ ...data.siteSettings, logo: base64 });
-    });
+    }, 800);
+  };
+
+  const handleFaviconUpload = async (file: File) => {
+    handleFileUpload(file, 'favicon', async (base64) => {
+      await saveSiteSettings({ ...data.siteSettings, favicon: base64 });
+    }, 192); // Smaller size for favicon
   };
 
   const handleSaveSettings = async () => {
@@ -140,6 +149,12 @@ const Dashboard: React.FC = () => {
   const handleRemoveLogo = async () => {
     if(window.confirm('Remove logo?')) {
       await saveSiteSettings({ ...data.siteSettings, logo: '' });
+    }
+  };
+
+  const handleRemoveFavicon = async () => {
+    if(window.confirm('Remove favicon?')) {
+      await saveSiteSettings({ ...data.siteSettings, favicon: '' });
     }
   };
 
@@ -423,6 +438,42 @@ const Dashboard: React.FC = () => {
                         Upload Logo
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                           if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]);
+                        }} />
+                     </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Favicon Section */}
+              <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">Site Favicon</h4>
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                  <div className="w-full md:w-1/3 flex flex-col items-center">
+                    <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 relative group overflow-hidden">
+                       {uploadingId === 'favicon' ? (
+                          <div className="flex flex-col items-center text-blue-600">
+                             <svg className="animate-spin h-5 w-5 mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                             <span className="text-xs">Processing</span>
+                          </div>
+                       ) : data.siteSettings.favicon ? (
+                          <img src={data.siteSettings.favicon} alt="Favicon" className="max-h-full max-w-full object-contain p-2" />
+                       ) : (
+                          <div className="text-gray-400 text-xs">No Favicon</div>
+                       )}
+                    </div>
+                    {data.siteSettings.favicon && (
+                      <button onClick={handleRemoveFavicon} className="mt-3 text-red-500 text-sm font-medium hover:text-red-700 hover:underline">Remove</button>
+                    )}
+                  </div>
+                  <div className="flex-1 w-full">
+                     <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                       Upload a browser icon (favicon).
+                       <br/><strong>Recommended:</strong> Square PNG image (e.g., 192x192px).
+                     </p>
+                     <label className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors font-medium shadow-sm">
+                        Upload Favicon
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          if (e.target.files?.[0]) handleFaviconUpload(e.target.files[0]);
                         }} />
                      </label>
                   </div>

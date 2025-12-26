@@ -29,6 +29,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
+  // --- Dynamic Document Updates (Title & Favicon) ---
+  useEffect(() => {
+    // Update Page Title
+    if (siteSettings.title) {
+      document.title = siteSettings.title;
+    }
+
+    // Update Favicon
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (link) {
+      if (siteSettings.favicon) {
+        link.href = siteSettings.favicon;
+      } else {
+        link.href = '/favicon.svg'; // Fallback to default
+      }
+    }
+  }, [siteSettings]);
+
   // --- Firestore Sync Logic ---
   useEffect(() => {
     if (!db) {
@@ -216,7 +234,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Sanitize
     const cleanSettings: SiteSettings = {
         title: settings.title || '',
-        logo: settings.logo || ''
+        logo: settings.logo || '',
+        favicon: settings.favicon || ''
     };
     
     const updateLocal = () => setSiteSettings(cleanSettings);
