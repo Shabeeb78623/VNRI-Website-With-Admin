@@ -124,9 +124,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     console.warn("Firestore Operation Failed:", e.message);
     if (e.code === 'permission-denied') {
       setDbError('permission-denied');
-      // We do NOT alert here anymore to keep the UI clean. 
-      // The Dashboard will show a banner instead.
-    } else if (e.message.includes("circular structure")) {
+    } else if (e.code === 'resource-exhausted') {
+      setDbError('resource-exhausted');
+      alert("Error: Storage Quota Exceeded or Document Too Large. Please try a smaller image.");
+    } else if (e.message && e.message.includes("circular structure")) {
       alert("Error: Attempted to save invalid data (Circular JSON). Please refresh and try again.");
     }
   };
@@ -159,7 +160,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const colName = type === 'main' ? 'main_committee' : 'balavedhi_committee';
       await setDoc(doc(db, colName, cleanMember.id), cleanMember);
-      // Clear error if success
       setDbError(null);
     } catch (e: any) {
       handleError(e);

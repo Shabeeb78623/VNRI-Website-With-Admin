@@ -19,6 +19,7 @@ const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'main' | 'balavedhi' | 'gallery' | 'settings'>('main');
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   
   // Settings Local State
   const [settingsTitle, setSettingsTitle] = useState(data.siteSettings.title);
@@ -298,18 +299,63 @@ const Dashboard: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                </svg>
                <div>
-                 <p className="font-bold">Database Locked (Strict Mode Detected)</p>
-                 <p className="text-sm text-red-100 mt-1">Your changes are being saved locally only. To enable cloud saving, you must update your Firebase Rules.</p>
+                 <p className="font-bold">Database Access Blocked</p>
+                 <p className="text-sm text-red-100 mt-1">Changes are saving locally but not to the server. You need to open access in Firebase Rules.</p>
                </div>
             </div>
-            <a 
-              href="https://console.firebase.google.com/project/_/firestore/rules" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            <button 
+              onClick={() => setShowRulesModal(true)}
               className="bg-white text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-50 transition-colors whitespace-nowrap"
             >
-              Open Firebase Console
-            </a>
+              Fix This Now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rules Fix Modal */}
+      {showRulesModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6 shadow-2xl relative">
+            <button onClick={() => setShowRulesModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">How to enable Cloud Saving</h3>
+            <div className="space-y-4">
+              <p className="text-gray-600">Your Firestore Database is currently in "Locked" or "Production" mode which blocks writes. Since we are using a custom admin panel, we need to allow writes.</p>
+              
+              <div className="bg-gray-100 p-4 rounded-lg border border-gray-300">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">1. Go to Firebase Console &gt; Firestore Database &gt; Rules</p>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">2. Paste this code exactly:</p>
+                <pre className="bg-gray-800 text-green-400 p-4 rounded text-sm overflow-x-auto">
+{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}`}
+                </pre>
+              </div>
+              
+              <div className="flex gap-4">
+                <a 
+                  href="https://console.firebase.google.com/project/_/firestore/rules" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-blue-600 text-white text-center py-3 rounded-lg font-bold hover:bg-blue-700"
+                >
+                  Open Firebase Console
+                </a>
+                <button 
+                  onClick={() => { navigator.clipboard.writeText("rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}"); alert("Rules copied to clipboard!"); }}
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-bold hover:bg-gray-300"
+                >
+                  Copy Code
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
